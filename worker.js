@@ -9,17 +9,28 @@ export default {
     }
 
     const API_KEY = env.YOUTUBE_API_KEY; // APIキーをWorkerのSecretsに保存する
-    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+
+    if (!API_KEY) {
+      return new Response('YouTube API key not configured.', { status: 500 });
+    }
+
+    // videoIdを明示的にエンコードしてURL生成時の不正な文字を防ぐ
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(videoId)}&key=${API_KEY}`;
 
     try {
       const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        return new Response('Failed to fetch video data.', { status: response.status });
+      }
+
       const data = await response.json();
 
       if (data.items && data.items.length > 0) {
         const item = data.items[0];
         const title = item.snippet.title;
         const artist = item.snippet.channelTitle; // チャンネル名をアーティストとして扱う
-        
+
         return new Response(`${title} / ${artist}`, {
           headers: { 'Content-Type': 'text/plain' }
         });
